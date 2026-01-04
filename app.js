@@ -1,5 +1,5 @@
 let db;
-const DB_NAME = "OfluffDB";
+const DB_NAME = "0fluffDB";
 const STORE_NAME = "shows";
 
 // 1. PWA Service Worker Registration
