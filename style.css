@@ -1,0 +1,171 @@
+:root {
+    --bg: #121212;
+    --card: #1e1e1e;
+    --text: #ffffff;
+    --text-dim: #a0a0a0;
+    --accent: #bb86fc;
+    --accent-hover: #a370db;
+    --danger: #cf6679;
+    --border: #333;
+    --radius: 12px;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* Header */
+header {
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.5px; }
+
+/* Buttons */
+button {
+    background: var(--accent);
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    color: #000;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: transform 0.1s active;
+}
+
+button:active { transform: scale(0.96); }
+
+button.secondary { background: #333; color: white; }
+button.danger { background: transparent; color: var(--danger); padding: 5px 10px; }
+button.icon-btn { padding: 10px; background: #333; color: white; }
+
+/* Grid & Cards */
+.grid {
+    display: grid;
+    /* Responsive grid that adapts to screen size */
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 20px;
+    width: 100%;
+    max-width: 1000px;
+}
+
+.card {
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.2s;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+
+.card:hover { transform: translateY(-2px); }
+
+/* The Movie Poster Logic */
+.poster-slot {
+    width: 100%;
+    aspect-ratio: 2/3; /* Standard Movie Poster Ratio */
+    background: #252525;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.poster-slot img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Ensures image fills the tall slot without stretching */
+}
+
+.poster-placeholder { color: #444; font-size: 0.8rem; text-align: center; padding: 10px; }
+
+.card-content { padding: 12px; flex-grow: 1; }
+.card-title { 
+    font-size: 1rem; 
+    margin: 0 0 6px 0; 
+    font-weight: 600; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+
+.card-stats { 
+    display: flex; 
+    justify-content: space-between; 
+    font-size: 0.85rem; 
+    color: var(--text-dim); 
+}
+.stat b { color: var(--accent); }
+
+.card-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 5px;
+    padding: 8px;
+    background: rgba(0,0,0,0.2);
+}
+
+.card-actions button {
+    padding: 6px;
+    font-size: 0.8rem;
+    border-radius: 4px;
+}
+
+/* Modal */
+#modal {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+}
+.hidden { display: none !important; }
+
+.modal-content {
+    background: var(--card);
+    padding: 24px;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 350px;
+    border: 1px solid var(--border);
+}
+
+.form-group { margin-bottom: 16px; }
+.row { display: flex; gap: 12px; }
+.row .form-group { flex: 1; }
+
+label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: var(--text-dim); }
+input {
+    width: 100%;
+    padding: 12px;
+    background: #121212;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: white;
+    box-sizing: border-box;
+    font-size: 1rem;
+}
+
+.modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+.modal-actions button { flex: 1; }
