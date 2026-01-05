@@ -85,8 +85,51 @@ async function saveShow() {
     try {
         const titleEl = document.getElementById('title');
         const title = titleEl ? titleEl.value.trim() : "";
-        
         if (!title) return alert("Title is required");
+
+        const season = parseInt(document.getElementById('season')?.value || 1);
+        const episode = parseInt(document.getElementById('episode')?.value || 1);
+        
+        // 1. CONVERT IMAGE FIRST (Outside the transaction)
+        const fileInput = document.getElementById('poster');
+        const posterFile = fileInput ? fileInput.files[0] : null;
+        let posterBase64 = null;
+        if (posterFile) {
+            posterBase64 = await toBase64(posterFile);
+        }
+
+        // 2. NOW START TRANSACTION
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+
+        const showData = {
+            title, 
+            season, 
+            episode, 
+            poster: posterBase64, 
+            updated: Date.now()
+        };
+
+        // Check if we are editing or adding
+        const idInput = document.getElementById('showId');
+        const editId = idInput && idInput.value ? parseInt(idInput.value) : null;
+
+        if (editId) {
+            showData.id = editId;
+            store.put(showData);
+        } else {
+            store.add(showData);
+        }
+
+        tx.oncomplete = () => {
+            closeModal();
+            renderShows();
+        };
+    } catch (err) {
+        alert("Save failed: " + err.message);
+    }
+}
+
 
         // Safely get values, defaulting to 1 or null if missing
         const season = parseInt(document.getElementById('season')?.value || 1);
