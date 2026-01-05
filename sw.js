@@ -1,4 +1,5 @@
-const CACHE_NAME = "0fluff-v5";
+const CACHE_NAME = "0fluff-v4"; 
+
 const ASSETS = [
   "./",
   "./index.html",
@@ -8,16 +9,20 @@ const ASSETS = [
   "./manifest.json"
 ];
 
-// Install Event: Cache core files
 self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
   );
+  // This line is crucial: it forces the new SW to take over immediately
+  self.skipWaiting(); 
 });
 
-// Fetch Event: Serve from cache, fall back to network
-self.addEventListener("fetch", (e) => {
-  e.respondWith(
-    caches.match(e.request).then((response) => response || fetch(e.request))
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+      );
+    })
   );
 });
