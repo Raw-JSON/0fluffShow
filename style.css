@@ -2,10 +2,11 @@
     --bg: #121212;
     --card: #1e1e1e;
     --text: #ffffff;
-    --text-dim: #a0a0a0;
+    --text-dim: #b0b0b0;
     --accent: #bb86fc;
     --accent-hover: #a370db;
     --danger: #cf6679;
+    --success: #03dac6;
     --border: #333;
     --radius: 12px;
 }
@@ -34,6 +35,17 @@ header {
     border-bottom: 1px solid var(--border);
 }
 
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.app-icon {
+    width: 32px;
+    height: 32px;
+}
+
 h1 { margin: 0; font-size: 1.5rem; letter-spacing: -0.5px; }
 
 /* Buttons */
@@ -45,20 +57,19 @@ button {
     color: #000;
     font-weight: 600;
     cursor: pointer;
-    font-size: 0.95rem;
-    transition: transform 0.1s active;
+    font-size: 0.9rem;
+    transition: transform 0.1s active, opacity 0.2s;
 }
 
 button:active { transform: scale(0.96); }
 
 button.secondary { background: #333; color: white; }
-button.danger { background: transparent; color: var(--danger); padding: 5px 10px; }
+button.danger { background: #333; color: var(--danger); }
 button.icon-btn { padding: 10px; background: #333; color: white; }
 
 /* Grid & Cards */
 .grid {
     display: grid;
-    /* Responsive grid that adapts to screen size */
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 20px;
     width: 100%;
@@ -71,16 +82,14 @@ button.icon-btn { padding: 10px; background: #333; color: white; }
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transition: transform 0.2s;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    position: relative;
 }
 
-.card:hover { transform: translateY(-2px); }
-
-/* The Movie Poster Logic */
+/* Poster */
 .poster-slot {
     width: 100%;
-    aspect-ratio: 2/3; /* Standard Movie Poster Ratio */
+    aspect-ratio: 2/3;
     background: #252525;
     display: flex;
     align-items: center;
@@ -92,41 +101,69 @@ button.icon-btn { padding: 10px; background: #333; color: white; }
 .poster-slot img {
     width: 100%;
     height: 100%;
-    object-fit: cover; /* Ensures image fills the tall slot without stretching */
+    object-fit: cover;
+    transition: transform 0.3s ease;
 }
 
-.poster-placeholder { color: #444; font-size: 0.8rem; text-align: center; padding: 10px; }
+.card:hover .poster-slot img { transform: scale(1.05); }
 
-.card-content { padding: 12px; flex-grow: 1; }
+.poster-placeholder { color: #444; font-size: 1.2rem; font-weight: bold; }
+
+/* Card Body */
+.card-content { padding: 12px; flex-grow: 1; display: flex; flex-direction: column; gap: 4px; }
+
 .card-title { 
     font-size: 1rem; 
-    margin: 0 0 6px 0; 
-    font-weight: 600; 
+    font-weight: 700; 
     white-space: nowrap; 
     overflow: hidden; 
     text-overflow: ellipsis; 
+    margin-bottom: 4px;
+}
+
+.next-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--accent);
+    font-weight: bold;
 }
 
 .card-stats { 
     display: flex; 
-    justify-content: space-between; 
-    font-size: 0.85rem; 
+    gap: 10px;
+    font-size: 0.9rem; 
     color: var(--text-dim); 
 }
-.stat b { color: var(--accent); }
 
+.status-badge {
+    font-size: 0.75rem;
+    color: var(--success);
+    background: rgba(3, 218, 198, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    align-self: flex-start;
+    margin-top: 4px;
+    display: inline-block;
+}
+
+/* Actions */
 .card-actions {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
-    gap: 5px;
+    grid-template-columns: 1fr 1fr 1fr auto; /* Ep, Sz, Edit, Del */
+    gap: 4px;
     padding: 8px;
-    background: rgba(0,0,0,0.2);
+    background: #181818;
+    border-top: 1px solid #2a2a2a;
 }
 
 .card-actions button {
-    padding: 6px;
-    font-size: 0.8rem;
+    padding: 8px 4px;
+    font-size: 0.75rem;
     border-radius: 4px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 /* Modal */
@@ -138,7 +175,7 @@ button.icon-btn { padding: 10px; background: #333; color: white; }
     justify-content: center;
     align-items: center;
     z-index: 100;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(5px);
 }
 .hidden { display: none !important; }
 
@@ -149,6 +186,7 @@ button.icon-btn { padding: 10px; background: #333; color: white; }
     width: 90%;
     max-width: 350px;
     border: 1px solid var(--border);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.5);
 }
 
 .form-group { margin-bottom: 16px; }
@@ -166,6 +204,7 @@ input {
     box-sizing: border-box;
     font-size: 1rem;
 }
+input:focus { border-color: var(--accent); outline: none; }
 
-.modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; }
 .modal-actions button { flex: 1; }
