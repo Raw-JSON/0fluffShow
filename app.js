@@ -179,14 +179,8 @@ function renderShows() {
             const card = document.createElement('div');
             card.className = 'card';
             
-            // Status Logic
-            let statusNote = "";
-            if (show.totalSeasons) {
-                if (show.season > show.totalSeasons) statusNote = `<span style="color:#03dac6">Completed! 🎉</span>`;
-                else if (show.season == show.totalSeasons) statusNote = `<span style="color:#bb86fc">Final Season</span>`;
-                else if (show.season > 1 && show.episode == 1) statusNote = `Season ${show.season - 1} finished`;
-            }
-
+            
+             // 4. status logic
             const imgHtml = show.poster 
                 ? `<div class="poster-slot"><img src="${show.poster}" alt="${show.title}"></div>` 
                 : `<div class="poster-slot"><div class="poster-placeholder">${show.title.substring(0,2).toUpperCase()}</div></div>`;
