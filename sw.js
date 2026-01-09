@@ -1,4 +1,4 @@
-const CACHE_NAME = "0fluff-v11 "; // Version bumped
+const CACHE_NAME = "0fluff-v12 "; // Version bumped
 
 const ASSETS = [
   "./",
