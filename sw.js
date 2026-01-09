@@ -1,30 +1,27 @@
-const CACHE_NAME = "0fluff-v9"; // Increment this version number whenever you update code!
+const CACHE_NAME = "0fluff-v10"; // Version bumped
 
 const ASSETS = [
   "./",
   "./index.html",
   "./style.css",
   "./app.js",
+  "./db.js",
+  "./api.js",
+  "./ui.js",
   "./icon.svg",
   "./manifest.json"
 ];
 
-// 1. INSTALL: Cache all files immediately
+// 1. INSTALL
 self.addEventListener("install", (e) => {
-  console.log("[SW] Installing...");
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log("[SW] Caching all assets");
-      return cache.addAll(ASSETS);
-    })
-  );
-  // Forces this new Service Worker to become active immediately
   self.skipWaiting(); 
+  e.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS))
+  );
 });
 
-// 2. ACTIVATE: Clean up old caches (Robustness for updates)
+// 2. ACTIVATE
 self.addEventListener("activate", (e) => {
-  console.log("[SW] Activating...");
   e.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
@@ -32,25 +29,12 @@ self.addEventListener("activate", (e) => {
       );
     })
   );
-  // Takes control of any open pages immediately
   return self.clients.claim();
 });
 
-// 3. FETCH: The missing piece! (Offline capability)
+// 3. FETCH
 self.addEventListener("fetch", (e) => {
   e.respondWith(
-    caches.match(e.request).then((response) => {
-      // Hit? Return the cached version (Offline works!)
-      if (response) {
-        return response;
-      }
-      
-      // Miss? Fetch from network
-      return fetch(e.request).catch(() => {
-        // Optional: If network fails and not in cache, you could show a fallback page here
-        // But for a single-page app, usually the cache covers it.
-        console.log("Offline and file not cached:", e.request.url);
-      });
-    })
+    caches.match(e.request).then((response) => response || fetch(e.request))
   );
 });
