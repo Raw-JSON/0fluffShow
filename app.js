@@ -13,36 +13,31 @@ const app = {
 
     async openEdit(id) {
         document.getElementById('modal').classList.remove('hidden');
-        await UI.renderModalContent(id);
         const show = await DB.getShow(id);
-        if (show) UI.fillForm(show);
+        if (show) {
+            await UI.renderModalContent(show); // Pass full object for conversion logic
+            UI.fillForm(show);
+        }
     },
 
-    // --- UPDATED CHECKLIST LOGIC ---
     async openChecklist(id) {
         let show = await DB.getShow(id);
         if (!show) return;
 
-        // SELF-HEAL PROTOCOL:
-        // If this is an API show but lacks the new 'seasonData' map...
+        // Legacy Sync Logic
         if (show.tmdbId && (!show.seasonData || show.seasonData.length === 0)) {
-            // ...Fetch fresh details from TMDB
             const details = await API.getDetails(show.tmdbId);
-            
             if (details && details.seasonData) {
-                // ...And Patch the record instantly
                 show.seasonData = details.seasonData;
                 show.status = details.status; 
                 show.rating = details.rating;
                 await DB.saveShow(show);
-                // Refresh list to remove "Tap to Sync" warning
                 UI.renderList();
             } else {
-                alert("Sync failed. Check API Key or Internet.");
+                alert("Sync failed. Check API Key.");
                 return;
             }
         }
-
         document.getElementById('modal').classList.remove('hidden');
         UI.renderChecklist(show);
     },
@@ -52,30 +47,57 @@ const app = {
         document.getElementById('modalBody').innerHTML = '';
     },
 
+    // --- API & CONVERSION LOGIC ---
     async selectApiShow(tmdbId) {
         const details = await API.getDetails(tmdbId);
         if (!details) return alert("Failed to fetch details");
 
+        // If we are in "Conversion Mode" (Hidden input has a value)
+        const convertId = document.getElementById('convertId').value;
+        if (convertId) {
+            await this.finalizeConversion(parseInt(convertId), details);
+            return;
+        }
+
+        // Normal "New Show" Logic
         document.getElementById('title').value = details.title;
         document.getElementById('tmdbId').value = details.tmdbId;
         document.getElementById('apiPoster').value = details.poster;
         document.getElementById('apiStatus').value = details.status;
         document.getElementById('apiRating').value = details.rating;
         document.getElementById('apiSeasonData').value = JSON.stringify(details.seasonData);
-
         UI.populateSeasonSelect(details.seasonData);
     },
 
+    async finalizeConversion(id, details) {
+        const show = await DB.getShow(id);
+        
+        // Merge API data into existing Manual show
+        show.tmdbId = details.tmdbId;
+        show.title = details.title; // Update title to official one
+        show.poster = details.poster;
+        show.status = details.status;
+        show.rating = details.rating;
+        show.seasonData = details.seasonData;
+        show.updated = Date.now();
+
+        await DB.saveShow(show);
+        this.closeModal();
+        UI.renderList();
+        alert(`Upgraded "${show.title}" to Smart Tracking!`);
+    },
+
+    // --- CRUD ---
     async saveShow() {
         const idInput = document.getElementById('showId');
         const editId = idInput && idInput.value ? parseInt(idInput.value) : null;
-        
         const apiIdEl = document.getElementById('tmdbId');
         let showData = {};
 
         if (apiIdEl && apiIdEl.value) {
             // API SAVE
             const seasonSelect = document.getElementById('seasonSelect');
+            // If editing an existing API show, preserve ID
             showData = {
                 title: document.getElementById('title').value,
                 tmdbId: parseInt(apiIdEl.value),
@@ -83,7 +105,7 @@ const app = {
                 status: document.getElementById('apiStatus').value,
                 rating: document.getElementById('apiRating').value,
                 seasonData: JSON.parse(document.getElementById('apiSeasonData').value),
-                season: parseInt(seasonSelect.value),
+                season: parseInt(seasonSelect ? seasonSelect.value : document.getElementById('season').value),
                 episode: parseInt(document.getElementById('episode').value),
                 updated: Date.now()
             };
@@ -99,7 +121,6 @@ const app = {
                 updated: Date.now()
             };
             
-            // Image Logic
             const fileInput = document.getElementById('poster');
             if (fileInput && fileInput.files[0]) {
                 showData.poster = await toBase64(fileInput.files[0]);
@@ -118,7 +139,14 @@ const app = {
 
     async setEpisode(id, epNum) {
         const show = await DB.getShow(id);
-        show.episode = epNum;
+        
+        // TOGGLE FIX: If clicking the current episode, go back one (Uncheck)
+        if (show.episode === epNum) {
+            show.episode = Math.max(0, epNum - 1);
+        } else {
+            show.episode = epNum;
+        }
+        
         show.updated = Date.now();
         await DB.saveShow(show);
         UI.renderChecklist(show);
@@ -152,7 +180,7 @@ const app = {
     }
 };
 
-// Utilities
+// Utils
 function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
 function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
 async function saveSettings() {
@@ -164,7 +192,6 @@ async function exportData() { const shows = await DB.getAllShows(); const blob =
 async function importData(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const data = JSON.parse(e.target.result); await DB.clearShows(); for (const item of data) await DB.saveShow(item); location.reload(); } catch (err) { alert("Invalid backup"); } }; reader.readAsText(file); }
 function toBase64(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.readAsDataURL(file); reader.onload = () => resolve(reader.result); reader.onerror = error => reject(error); }); }
 
-// Expose
 window.app = app;
 window.openModal = app.openModal;
 window.openSettings = openSettings;
