@@ -341,3 +341,71 @@ input:focus { border-color: var(--accent); outline: none; }
     margin-top: 10px;
     width: 100%;
 }
+/* Checklist Polish */
+.checklist-grid {
+    gap: 12px;
+}
+
+.ep-box {
+    background: #1f1f1f;
+    border: 1px solid #333;
+    border-radius: 10px; /* Softer corners */
+    font-size: 0.9rem;
+    color: #555;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.ep-box.watched {
+    background: var(--accent);
+    color: #121212;
+    font-weight: 800;
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px rgba(187, 134, 252, 0.3);
+}
+
+/* "Next" Episode Pulse Animation */
+.ep-box.next {
+    border: 1px solid var(--text);
+    color: var(--text);
+    position: relative;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2); transform: scale(1); }
+    50% { box-shadow: 0 0 0 6px rgba(255, 255, 255, 0); transform: scale(1.05); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); transform: scale(1); }
+}
+
+/* Upgrade Box in Edit Modal */
+.upgrade-box {
+    background: linear-gradient(145deg, #1e1e1e, #252525);
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 24px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    border-left: 3px solid var(--accent);
+}
+
+.upgrade-title {
+    font-size: 0.85rem;
+    font-weight: bold;
+    color: var(--accent);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Refined Modal Search */
+#searchResults {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-top: none;
+    box-shadow: 0 15px 30px rgba(0,0,0,0.7);
+}
+
+.search-item {
+    transition: background 0.2s;
+}
+.search-item:hover { background: #333; }
