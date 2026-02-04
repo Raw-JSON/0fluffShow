@@ -509,3 +509,100 @@ input:focus { border-color: var(--accent); outline: none; }
     max-height: 200px;
     overflow-y: auto;
 }
+/* --- COMPACT LIST VIEW --- */
+
+/* Restrict the height of the list so it scrolls inside the modal */
+.season-list {
+    max-height: 60vh; /* Takes up max 60% of screen height */
+    overflow-y: auto; /* Scrollable */
+    padding-right: 5px; /* Space for scrollbar */
+    /* Custom Scrollbar for Webkit */
+    scrollbar-width: thin;
+    scrollbar-color: #444 #1a1a1a;
+}
+
+/* Chrome/Safari Scrollbar styling */
+.season-list::-webkit-scrollbar { width: 6px; }
+.season-list::-webkit-scrollbar-track { background: #1a1a1a; }
+.season-list::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+.season-group {
+    background: #1f1f1f;
+    border: 1px solid #333;
+    border-radius: 6px;
+    margin-bottom: 8px; /* Tighter gap */
+    overflow: hidden;
+}
+
+.season-header {
+    padding: 12px 15px; /* Reduced padding */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #252525;
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: background 0.2s ease;
+}
+
+.season-header:hover { background: #333; }
+
+.season-title { font-weight: 600; color: var(--text); }
+.season-meta { font-size: 0.75rem; color: #888; background: #1a1a1a; padding: 2px 6px; border-radius: 4px; }
+
+/* Episode Rows - Compact */
+.episode-row {
+    display: flex;
+    align-items: center;
+    padding: 8px 15px; /* Much tighter padding */
+    border-bottom: 1px solid #2a2a2a;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.episode-row:last-child { border-bottom: none; }
+.episode-row:hover { background: #2a2a2a; }
+
+.checkbox {
+    width: 16px; /* Smaller checkbox */
+    height: 16px;
+    border: 2px solid #555;
+    border-radius: 3px;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    transition: all 0.2s;
+}
+
+.checkbox.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #121212;
+}
+
+.ep-info { display: flex; flex-direction: column; }
+.ep-num { font-size: 0.7rem; color: #666; font-weight: bold; margin-bottom: 1px; }
+.ep-name { font-size: 0.9rem; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+
+/* Active "Next Up" State */
+.episode-row.next-up {
+    background: rgba(187, 134, 252, 0.08); /* Very subtle purple tint */
+    border-left: 3px solid var(--accent);
+}
+.episode-row.next-up .ep-name { color: var(--accent); font-weight: 500; }
+
+/* Settings Section */
+.settings-section {
+    margin-top: 20px;
+    padding-top: 15px;
+    border-top: 1px solid #333;
+}
+.settings-section h4 {
+    margin-bottom: 10px;
+    font-size: 0.85rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
