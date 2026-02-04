@@ -15,7 +15,7 @@ const API = {
         try {
             const res = await fetch(`${API_BASE}/search/tv?api_key=${this.key}&query=${encodeURIComponent(query)}`);
             const data = await res.json();
-            return data.results ? data.results.slice(0, 5) : [];
+            return data.results.slice(0, 5);
         } catch (e) { console.error(e); return []; }
     },
 
@@ -25,6 +25,8 @@ const API = {
             const res = await fetch(`${API_BASE}/tv/${tmdbId}?api_key=${this.key}`);
             const data = await res.json();
             
+            // Filter out "Season 0" (Specials) usually, unless you want them. 
+            // We map to a clean structure: { seasonNumber: 1, episodeCount: 8 }
             const seasonsMap = data.seasons
                 .filter(s => s.season_number > 0)
                 .map(s => ({
@@ -39,18 +41,9 @@ const API = {
                 status: data.status,
                 rating: data.vote_average ? data.vote_average.toFixed(1) : null,
                 overview: data.overview,
+                // THE NEW DATA:
                 seasonData: seasonsMap
             };
-        } catch (e) { console.error(e); return null; }
-    },
-
-    // NEW: Fetch specific season details (Episode Names)
-    async getSeasonDetails(tmdbId, seasonNum) {
-        if (!this.key) return null;
-        try {
-            const res = await fetch(`${API_BASE}/tv/${tmdbId}/season/${seasonNum}?api_key=${this.key}`);
-            const data = await res.json();
-            return data.episodes; // Returns array of episode objects { name, episode_number, etc. }
         } catch (e) { console.error(e); return null; }
     }
 };
