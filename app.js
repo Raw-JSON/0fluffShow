@@ -4,6 +4,18 @@ const app = {
         await UI.renderList();
         const key = await DB.getSetting('tmdb_key');
         if (key) document.getElementById('apiKeyInput').value = key;
+
+        // CLICK OUTSIDE TO CLOSE
+        const modal = document.getElementById('modal');
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) app.closeModal();
+        });
+
+        // Also for Settings Modal
+        const settings = document.getElementById('settingsModal');
+        settings.addEventListener('click', (e) => {
+            if (e.target === settings) closeSettings();
+        });
     },
 
     openModal() {
@@ -15,31 +27,36 @@ const app = {
         document.getElementById('modal').classList.remove('hidden');
         const show = await DB.getShow(id);
         if (show) {
-            await UI.renderModalContent(show); // Pass full object for conversion logic
+            await UI.renderModalContent(show);
             UI.fillForm(show);
         }
     },
 
+    // --- V4.0 TRACKING LOGIC ---
     async openChecklist(id) {
         let show = await DB.getShow(id);
         if (!show) return;
 
-        // Legacy Sync Logic
-        if (show.tmdbId && (!show.seasonData || show.seasonData.length === 0)) {
-            const details = await API.getDetails(show.tmdbId);
-            if (details && details.seasonData) {
-                show.seasonData = details.seasonData;
-                show.status = details.status; 
-                show.rating = details.rating;
-                await DB.saveShow(show);
-                UI.renderList();
-            } else {
-                alert("Sync failed. Check API Key.");
-                return;
+        // LIVE SYNC: Check if show updated?
+        if (show.tmdbId) {
+            const now = Date.now();
+            // Check once every 12 hours (43200000 ms)
+            if (!show.lastSync || (now - show.lastSync > 43200000)) {
+                console.log("Auto-Syncing show...");
+                const fresh = await API.getDetails(show.tmdbId);
+                if (fresh) {
+                    show.seasonData = fresh.seasonData;
+                    show.status = fresh.status;
+                    show.lastSync = now;
+                    // Preserve existing cache of episode names
+                    if(!show.seasonDetailCache) show.seasonDetailCache = {};
+                    await DB.saveShow(show);
+                }
             }
         }
+
         document.getElementById('modal').classList.remove('hidden');
-        UI.renderChecklist(show);
+        await UI.renderChecklist(show);
     },
 
     closeModal() {
@@ -47,19 +64,83 @@ const app = {
         document.getElementById('modalBody').innerHTML = '';
     },
 
-    // --- API & CONVERSION LOGIC ---
+    // --- ACCORDION LOGIC ---
+    async toggleSeason(showId, seasonNum) {
+        const group = document.getElementById(`season-group-${seasonNum}`);
+        const listContainer = document.getElementById(`ep-list-${seasonNum}`);
+        const show = await DB.getShow(showId);
+
+        // Toggle Open/Closed
+        const isOpen = group.classList.contains('open');
+        
+        if (isOpen) {
+            group.classList.remove('open');
+        } else {
+            // Close others (Optional, but cleaner)
+            document.querySelectorAll('.season-group').forEach(el => el.classList.remove('open'));
+            
+            group.classList.add('open');
+            // Render content if empty
+            if (listContainer.innerHTML.trim() === '') {
+                listContainer.innerHTML = '<div style="padding:15px; text-align:center;">Loading...</div>';
+                listContainer.innerHTML = await UI.buildEpisodeList(show, seasonNum);
+            }
+        }
+    },
+
+    async cacheSeasonDetails(showId, seasonNum, episodes) {
+        const show = await DB.getShow(showId);
+        if (!show.seasonDetailCache) show.seasonDetailCache = {};
+        show.seasonDetailCache[seasonNum] = episodes;
+        await DB.saveShow(show);
+    },
+
+    // --- PROGRESS LOGIC (SEQUENTIAL) ---
+    async setEpisode(showId, seasonNum, epNum) {
+        const show = await DB.getShow(showId);
+        
+        // Logic: Clicking an item sets progress to THAT item.
+        // If clicking the current exact progress, toggle back one?
+        // Simpler: Just set strict progress.
+        
+        // If user clicks S2 E5:
+        // show.season = 2
+        // show.episode = 5
+        
+        // TOGGLE: If we click the one we are currently on, go back 1.
+        if (show.season === seasonNum && show.episode === epNum) {
+            if (epNum > 1) {
+                show.episode = epNum - 1;
+            } else {
+                // Back to end of previous season? 
+                // Too complex for 0fluff. Just stay at 1 or go to 0?
+                // Let's just decrement episode.
+                show.episode = Math.max(0, epNum - 1);
+            }
+        } else {
+            show.season = seasonNum;
+            show.episode = epNum;
+        }
+
+        show.updated = Date.now();
+        await DB.saveShow(show);
+        
+        // Re-render only the list part? Or full modal?
+        // Full modal is safer to update all checks correctly.
+        await UI.renderChecklist(show);
+        UI.renderList(); // Update background
+    },
+
+    // --- API & SAVE ---
     async selectApiShow(tmdbId) {
         const details = await API.getDetails(tmdbId);
-        if (!details) return alert("Failed to fetch details");
-
-        // If we are in "Conversion Mode" (Hidden input has a value)
         const convertId = document.getElementById('convertId').value;
+        
         if (convertId) {
             await this.finalizeConversion(parseInt(convertId), details);
             return;
         }
 
-        // Normal "New Show" Logic
         document.getElementById('title').value = details.title;
         document.getElementById('tmdbId').value = details.tmdbId;
         document.getElementById('apiPoster').value = details.poster;
@@ -71,23 +152,18 @@ const app = {
 
     async finalizeConversion(id, details) {
         const show = await DB.getShow(id);
-        
-        // Merge API data into existing Manual show
         show.tmdbId = details.tmdbId;
-        show.title = details.title; // Update title to official one
+        show.title = details.title;
         show.poster = details.poster;
         show.status = details.status;
         show.rating = details.rating;
         show.seasonData = details.seasonData;
         show.updated = Date.now();
-
         await DB.saveShow(show);
         this.closeModal();
         UI.renderList();
-        alert(`Upgraded "${show.title}" to Smart Tracking!`);
     },
 
-    // --- CRUD ---
     async saveShow() {
         const idInput = document.getElementById('showId');
         const editId = idInput && idInput.value ? parseInt(idInput.value) : null;
@@ -97,7 +173,6 @@ const app = {
         if (apiIdEl && apiIdEl.value) {
             // API SAVE
             const seasonSelect = document.getElementById('seasonSelect');
-            // If editing an existing API show, preserve ID
             showData = {
                 title: document.getElementById('title').value,
                 tmdbId: parseInt(apiIdEl.value),
@@ -113,14 +188,12 @@ const app = {
             // MANUAL SAVE
             const title = document.getElementById('title').value;
             if(!title) return alert("Title req");
-            
             showData = {
                 title,
                 season: parseInt(document.getElementById('season').value),
                 episode: parseInt(document.getElementById('episode').value),
                 updated: Date.now()
             };
-            
             const fileInput = document.getElementById('poster');
             if (fileInput && fileInput.files[0]) {
                 showData.poster = await toBase64(fileInput.files[0]);
@@ -129,37 +202,16 @@ const app = {
                 showData.poster = old.poster;
             }
         }
-
         if (editId) showData.id = editId;
+        
+        // Preserve cache if editing
+        if (editId) {
+            const old = await DB.getShow(editId);
+            if(old.seasonDetailCache) showData.seasonDetailCache = old.seasonDetailCache;
+        }
 
         await DB.saveShow(showData);
         this.closeModal();
-        UI.renderList();
-    },
-
-    async setEpisode(id, epNum) {
-        const show = await DB.getShow(id);
-        
-        // TOGGLE FIX: If clicking the current episode, go back one (Uncheck)
-        if (show.episode === epNum) {
-            show.episode = Math.max(0, epNum - 1);
-        } else {
-            show.episode = epNum;
-        }
-        
-        show.updated = Date.now();
-        await DB.saveShow(show);
-        UI.renderChecklist(show);
-        UI.renderList();
-    },
-
-    async startSeason(id, newSeasonNum) {
-        const show = await DB.getShow(id);
-        show.season = newSeasonNum;
-        show.episode = 1;
-        show.updated = Date.now();
-        await DB.saveShow(show);
-        UI.renderChecklist(show);
         UI.renderList();
     },
 
@@ -180,8 +232,31 @@ const app = {
     }
 };
 
-// Utils
-function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
+// --- SETTINGS LOGIC ---
+function openSettings() { 
+    document.getElementById('settingsModal').classList.remove('hidden');
+    // Move Import/Export logic visually here if needed, 
+    // but the buttons are already in the HTML footer? 
+    // User requested move to settings panel.
+    const settingsBody = document.getElementById('settingsBody');
+    // Check if we already injected controls?
+    if (!document.getElementById('backupControls')) {
+        const div = document.createElement('div');
+        div.id = 'backupControls';
+        div.style.marginTop = '20px';
+        div.style.paddingTop = '20px';
+        div.style.borderTop = '1px solid #333';
+        div.innerHTML = `
+            <h3>Data Management</h3>
+            <div class="row" style="gap:10px; margin-top:10px;">
+                <button onclick="exportData()" class="secondary" style="width:100%">Backup (Export)</button>
+                <button onclick="document.getElementById('importFile').click()" class="secondary" style="width:100%">Restore (Import)</button>
+                <input type="file" id="importFile" hidden onchange="importData(event)">
+            </div>
+        `;
+        settingsBody.appendChild(div);
+    }
+}
 function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
 async function saveSettings() {
     const key = document.getElementById('apiKeyInput').value.trim();
