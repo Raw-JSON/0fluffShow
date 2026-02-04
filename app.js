@@ -235,33 +235,20 @@ const app = {
 // --- SETTINGS LOGIC ---
 function openSettings() { 
     document.getElementById('settingsModal').classList.remove('hidden');
-    // Move Import/Export logic visually here if needed, 
-    // but the buttons are already in the HTML footer? 
-    // User requested move to settings panel.
-    const settingsBody = document.getElementById('settingsBody');
-    // Check if we already injected controls?
-    if (!document.getElementById('backupControls')) {
-        const div = document.createElement('div');
-        div.id = 'backupControls';
-        div.style.marginTop = '20px';
-        div.style.paddingTop = '20px';
-        div.style.borderTop = '1px solid #333';
-        div.innerHTML = `
-            <h3>Data Management</h3>
-            <div class="row" style="gap:10px; margin-top:10px;">
-                <button onclick="exportData()" class="secondary" style="width:100%">Backup (Export)</button>
-                <button onclick="document.getElementById('importFile').click()" class="secondary" style="width:100%">Restore (Import)</button>
-                <input type="file" id="importFile" hidden onchange="importData(event)">
-            </div>
-        `;
-        settingsBody.appendChild(div);
-    }
+    // Removed the dynamic HTML injection code here because it is now hardcoded in index.html
+    const key = localStorage.getItem('tmdb_key'); // Or DB.getSetting equivalent
+    // The key input population happens in init() usually, but safe to ensure it here if you like
 }
+
 function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
+
 async function saveSettings() {
     const key = document.getElementById('apiKeyInput').value.trim();
     await DB.saveSetting('tmdb_key', key);
+    // Reload to apply settings
     location.reload();
+}
+
 }
 async function exportData() { const shows = await DB.getAllShows(); const blob = new Blob([JSON.stringify(shows)], { type: "application/json" }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `ofluff_backup_${new Date().toISOString().slice(0,10)}.json`; a.click(); }
 async function importData(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = async (e) => { try { const data = JSON.parse(e.target.result); await DB.clearShows(); for (const item of data) await DB.saveShow(item); location.reload(); } catch (err) { alert("Invalid backup"); } }; reader.readAsText(file); }
