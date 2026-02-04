@@ -78,119 +78,58 @@ const UI = {
         });
     },
 
-    // --- NEW LIST VIEW (Accordion) ---
-    async renderChecklist(show) {
+    renderChecklist(show) {
         const body = document.getElementById('modalBody');
         const title = document.getElementById('modalTitle');
-        title.innerText = show.title;
+        title.innerText = `${show.title} - S${show.season}`;
 
-        const seasons = show.seasonData || [];
-        let html = `<div class="season-list">`;
+        const safeSeasonData = show.seasonData || [];
+        const sData = safeSeasonData.find(s => s.number === show.season);
+        const totalEps = sData ? sData.episodes : 24; 
 
-        for (const s of seasons) {
-            const isPast = s.number < show.season;
-            const isCurrent = s.number === show.season;
-            const isFuture = s.number > show.season;
-            
-            // Auto-expand current season
-            const isOpen = isCurrent; 
-            const stateClass = isOpen ? 'open' : 'closed';
-            
-            // Status Text
-            let statusText = "";
-            if (isPast) statusText = "Completed";
-            else if (isCurrent) statusText = `${show.episode} / ${s.episodes}`;
-            else statusText = `${s.episodes} Episodes`;
+        let gridHtml = `<div class="checklist-grid">`;
+        for (let i = 1; i <= totalEps; i++) {
+            const isWatched = i <= show.episode;
+            const isNext = i === show.episode + 1;
+            let classList = "ep-box";
+            if (isWatched) classList += " watched";
+            if (isNext) classList += " next";
 
-            html += `
-                <div class="season-group ${stateClass}" id="season-group-${s.number}">
-                    <div class="season-header" onclick="app.toggleSeason(${show.id}, ${s.number})">
-                        <div class="season-title">Season ${s.number}</div>
-                        <div class="season-meta">${statusText}</div>
-                    </div>
-                    <div class="season-episodes" id="ep-list-${s.number}">
-                        ${isOpen ? await UI.buildEpisodeList(show, s.number) : ''}
-                    </div>
-                </div>
-            `;
+            gridHtml += `<div class="${classList}" onclick="app.setEpisode(${show.id}, ${i})">${i}</div>`;
         }
-        html += `</div>`;
-        
-        // Settings / Delete footer
-        html += `
-            <div class="modal-actions" style="margin-top:20px; border-top:1px solid #333; padding-top:15px;">
-                 <button class="secondary" onclick="app.closeModal()">Close</button>
-                 <button class="danger" onclick="app.deleteShow(${show.id})">Delete Show</button>
-            </div>
-        `;
+        gridHtml += `</div>`;
 
-        body.innerHTML = html;
-    },
-
-    // Helper to generate the episode rows
-    async buildEpisodeList(show, seasonNum) {
-        // 1. Try to get episode names from cache or API
-        let episodes = [];
-        
-        // Check if we have cached details for this season in the show object
-        if (show.seasonDetailCache && show.seasonDetailCache[seasonNum]) {
-            episodes = show.seasonDetailCache[seasonNum];
-        } else {
-            // Fetch from API
-            episodes = await API.getSeasonDetails(show.tmdbId, seasonNum);
-            if (episodes) {
-                // Save to cache to avoid refetching
-                await app.cacheSeasonDetails(show.id, seasonNum, episodes);
+        let nextSeasonHtml = '';
+        if (show.episode >= totalEps) {
+            const nextS = safeSeasonData.find(s => s.number === show.season + 1);
+            if (nextS) {
+                nextSeasonHtml = `
+                    <div class="season-complete-banner">
+                        <p>Season ${show.season} Complete!</p>
+                        <button class="next-season-btn" onclick="app.startSeason(${show.id}, ${show.season + 1})">Start Season ${show.season + 1}</button>
+                    </div>`;
+            } else {
+                nextSeasonHtml = `<div class="season-complete-banner"><p>All caught up!</p></div>`;
             }
         }
 
-        // Fallback if API fails or no key: generate dummy list
-        if (!episodes || episodes.length === 0) {
-            const count = show.seasonData.find(s => s.number === seasonNum)?.episodes || 10;
-            episodes = Array.from({length: count}, (_, i) => ({
-                episode_number: i + 1,
-                name: `Episode ${i + 1}`
-            }));
-        }
-
-        let html = '';
-        const currentEp = show.episode;
-        const currentSz = show.season;
-
-        episodes.forEach(ep => {
-            const epNum = ep.episode_number;
-            
-            // Logic: Is this checked?
-            // If season is past, ALL are checked.
-            // If season is current, check if epNum <= currentEp.
-            // If season is future, NONE checked.
-            let isChecked = false;
-            if (seasonNum < currentSz) isChecked = true;
-            else if (seasonNum === currentSz && epNum <= currentEp) isChecked = true;
-
-            const checkState = isChecked ? 'checked' : '';
-            const activeClass = (seasonNum === currentSz && epNum === currentEp + 1) ? 'next-up' : '';
-
-            html += `
-                <div class="episode-row ${activeClass}" onclick="app.setEpisode(${show.id}, ${seasonNum}, ${epNum})">
-                    <div class="checkbox ${checkState}">${isChecked ? '✔' : ''}</div>
-                    <div class="ep-info">
-                        <span class="ep-num">${epNum}.</span>
-                        <span class="ep-name">${ep.name}</span>
-                    </div>
-                </div>
-            `;
-        });
-        return html;
+        body.innerHTML = `
+            ${gridHtml}
+            ${nextSeasonHtml}
+            <div class="modal-actions" style="margin-top:20px">
+                <button class="secondary" onclick="app.closeModal()">Close</button>
+                <button class="danger" onclick="app.deleteShow(${show.id})">Delete Show</button>
+            </div>
+        `;
     },
 
-    // --- ADD/EDIT MODAL ---
+    // Handles Add (Manual/API) and Edit (Manual/API)
     async renderModalContent(showObj = null) {
         const body = document.getElementById('modalBody');
         const titleHeader = document.getElementById('modalTitle');
         const hasKey = API.hasKey();
 
-        // 1. ADD NEW (API MODE)
+        // SCENARIO 1: NEW SHOW (API ENABLED)
         if (hasKey && !showObj) {
             titleHeader.innerText = "Search Show";
             body.innerHTML = `
@@ -207,21 +146,18 @@ const UI = {
                 <div id="apiSelections" class="hidden">
                     <div class="form-group"><label>Where are you?</label><select id="seasonSelect" onchange="UI.updateEpisodeMax()"></select></div>
                     <div class="form-group"><label>Episode</label><input type="number" id="episode" value="1" min="1"></div>
-                    <div class="modal-actions">
-                        <button class="secondary" onclick="app.closeModal()">Cancel</button> <button onclick="app.saveShow()">Start Tracking</button>
-                    </div>
-                </div>
-                <div id="initialActions" class="modal-actions" style="margin-top:10px">
-                     <button class="secondary" onclick="app.closeModal()">Cancel</button>
+                    <div class="modal-actions"><button onclick="app.saveShow()">Start Tracking</button></div>
                 </div>
             `;
             document.getElementById('apiSearch').addEventListener('input', debounce((e) => UI.handleSearch(e.target.value), 500));
             return;
         }
 
-        // 2. EDIT / MANUAL
+        // SCENARIO 2: EDITING or ADDING MANUAL
         titleHeader.innerText = showObj ? "Edit Show" : "Add Show (Manual)";
+        
         let upgradeHtml = '';
+        // CONVERSION LOGIC: If Editing a Manual show AND API is active
         if (showObj && !showObj.tmdbId && hasKey) {
             upgradeHtml = `
                 <div class="upgrade-box">
@@ -250,24 +186,14 @@ const UI = {
                 <button onclick="app.saveShow()">Save</button>
             </div>
         `;
-        if (document.getElementById('apiSearch')) document.getElementById('apiSearch').addEventListener('input', debounce((e) => UI.handleSearch(e.target.value), 500));
+
+        if (document.getElementById('apiSearch')) {
+            document.getElementById('apiSearch').addEventListener('input', debounce((e) => UI.handleSearch(e.target.value), 500));
+        }
     },
 
-    // --- SETTINGS (Updated with Backup) ---
-    renderSettings() {
-        const body = document.getElementById('settingsBody'); // Use a different target or generic modal
-        // Note: app.js handles the generic modal, so we just use the same modal for settings
-        // But typically we used a separate 'settingsModal' div. 
-        // Let's assume we stick to the HTML structure provided.
-    },
-
-    // ... (Keep handleSearch, populateSeasonSelect, fillForm, updateEpisodeMax)
     async handleSearch(query) {
         const resultsDiv = document.getElementById('searchResults');
-        // Hide initial cancel button when searching starts
-        const initActions = document.getElementById('initialActions');
-        if(initActions) initActions.style.display = 'none';
-
         if (query.length < 2) { resultsDiv.classList.add('hidden'); return; }
         const results = await API.search(query);
         resultsDiv.innerHTML = results.map(show => `
@@ -295,9 +221,6 @@ const UI = {
         });
         container.classList.remove('hidden');
         document.getElementById('searchResults').classList.add('hidden');
-        // Hide initial Cancel button as the form now has its own cancel
-        const initActions = document.getElementById('initialActions');
-        if(initActions) initActions.style.display = 'none';
     },
 
     updateEpisodeMax() {
@@ -313,6 +236,7 @@ const UI = {
         setValue('title', data.title);
         setValue('season', data.season);
         setValue('episode', data.episode);
+        // If API show, we might fill hidden fields, but usually unneeded for basic edits
     }
 };
 
