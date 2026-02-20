@@ -25,8 +25,6 @@ const API = {
             const res = await fetch(`${API_BASE}/tv/${tmdbId}?api_key=${this.key}`);
             const data = await res.json();
             
-            // Filter out "Season 0" (Specials) usually, unless you want them. 
-            // We map to a clean structure: { seasonNumber: 1, episodeCount: 8 }
             const seasonsMap = data.seasons
                 .filter(s => s.season_number > 0)
                 .map(s => ({
@@ -41,9 +39,16 @@ const API = {
                 status: data.status,
                 rating: data.vote_average ? data.vote_average.toFixed(1) : null,
                 overview: data.overview,
-                // THE NEW DATA:
                 seasonData: seasonsMap
             };
         } catch (e) { console.error(e); return null; }
+    },
+
+    async getSeason(tmdbId, seasonNumber) {
+        if (!this.key) return null;
+        try {
+            const res = await fetch(`${API_BASE}/tv/${tmdbId}/season/${seasonNumber}?api_key=${this.key}`);
+            return await res.json();
+        } catch(e) { console.error(e); return null; }
     }
 };
