@@ -15,7 +15,7 @@ const app = {
         document.getElementById('modal').classList.remove('hidden');
         const show = await DB.getShow(id);
         if (show) {
-            await UI.renderModalContent(show); // Pass full object for conversion logic
+            await UI.renderModalContent(show); 
             UI.fillForm(show);
         }
     },
@@ -24,22 +24,24 @@ const app = {
         let show = await DB.getShow(id);
         if (!show) return;
 
-        // Legacy Sync Logic
-        if (show.tmdbId && (!show.seasonData || show.seasonData.length === 0)) {
+        let seasonDetails = null;
+
+        // Persistent Sync Logic: Always fetch latest TMDB data to keep tracking fresh
+        if (show.tmdbId && API.hasKey()) {
             const details = await API.getDetails(show.tmdbId);
             if (details && details.seasonData) {
                 show.seasonData = details.seasonData;
                 show.status = details.status; 
                 show.rating = details.rating;
                 await DB.saveShow(show);
-                UI.renderList();
-            } else {
-                alert("Sync failed. Check API Key.");
-                return;
             }
+            // Fetch episode names for the current season
+            seasonDetails = await API.getSeason(show.tmdbId, show.season);
         }
+
         document.getElementById('modal').classList.remove('hidden');
-        UI.renderChecklist(show);
+        UI.renderChecklist(show, seasonDetails);
+        UI.renderList();
     },
 
     closeModal() {
@@ -47,19 +49,16 @@ const app = {
         document.getElementById('modalBody').innerHTML = '';
     },
 
-    // --- API & CONVERSION LOGIC ---
     async selectApiShow(tmdbId) {
         const details = await API.getDetails(tmdbId);
         if (!details) return alert("Failed to fetch details");
 
-        // If we are in "Conversion Mode" (Hidden input has a value)
         const convertId = document.getElementById('convertId').value;
         if (convertId) {
             await this.finalizeConversion(parseInt(convertId), details);
             return;
         }
 
-        // Normal "New Show" Logic
         document.getElementById('title').value = details.title;
         document.getElementById('tmdbId').value = details.tmdbId;
         document.getElementById('apiPoster').value = details.poster;
@@ -72,9 +71,8 @@ const app = {
     async finalizeConversion(id, details) {
         const show = await DB.getShow(id);
         
-        // Merge API data into existing Manual show
         show.tmdbId = details.tmdbId;
-        show.title = details.title; // Update title to official one
+        show.title = details.title; 
         show.poster = details.poster;
         show.status = details.status;
         show.rating = details.rating;
@@ -87,7 +85,6 @@ const app = {
         alert(`Upgraded "${show.title}" to Smart Tracking!`);
     },
 
-    // --- CRUD ---
     async saveShow() {
         const idInput = document.getElementById('showId');
         const editId = idInput && idInput.value ? parseInt(idInput.value) : null;
@@ -95,9 +92,7 @@ const app = {
         let showData = {};
 
         if (apiIdEl && apiIdEl.value) {
-            // API SAVE
             const seasonSelect = document.getElementById('seasonSelect');
-            // If editing an existing API show, preserve ID
             showData = {
                 title: document.getElementById('title').value,
                 tmdbId: parseInt(apiIdEl.value),
@@ -110,7 +105,6 @@ const app = {
                 updated: Date.now()
             };
         } else {
-            // MANUAL SAVE
             const title = document.getElementById('title').value;
             if(!title) return alert("Title req");
             
@@ -140,7 +134,6 @@ const app = {
     async setEpisode(id, epNum) {
         const show = await DB.getShow(id);
         
-        // TOGGLE FIX: If clicking the current episode, go back one (Uncheck)
         if (show.episode === epNum) {
             show.episode = Math.max(0, epNum - 1);
         } else {
@@ -149,7 +142,13 @@ const app = {
         
         show.updated = Date.now();
         await DB.saveShow(show);
-        UI.renderChecklist(show);
+        
+        // Re-render checklist with same season details if available
+        let seasonDetails = null;
+        if (show.tmdbId) {
+             seasonDetails = await API.getSeason(show.tmdbId, show.season);
+        }
+        UI.renderChecklist(show, seasonDetails);
         UI.renderList();
     },
 
@@ -159,8 +158,7 @@ const app = {
         show.episode = 1;
         show.updated = Date.now();
         await DB.saveShow(show);
-        UI.renderChecklist(show);
-        UI.renderList();
+        this.openChecklist(id); // Reload full data
     },
 
     async quickUpdate(id, ds, de) {
@@ -180,7 +178,6 @@ const app = {
     }
 };
 
-// Utils
 function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
 function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
 async function saveSettings() {
