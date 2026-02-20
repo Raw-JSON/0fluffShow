@@ -18,24 +18,19 @@
     <div class="controls">
         <button class="icon-btn" onclick="openSettings()" title="Settings">⚙️</button>
         <button onclick="openModal()">+ Add</button>
-        <button class="icon-btn" onclick="exportData()" title="Backup">↓</button>
-        <button class="icon-btn" onclick="document.getElementById('importFile').click()" title="Restore">↑</button>
-        <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
     </div>
 </header>
 
-<main id="showList" class="grid">
-    </main>
+<main id="showList" class="grid"></main>
 
-<div id="modal" class="hidden">
+<div id="modal" class="hidden" onclick="if(event.target === this) app.closeModal()">
     <div class="modal-content">
         <h2 id="modalTitle">Manage Show</h2>
-        <div id="modalBody">
-            </div>
+        <div id="modalBody"></div>
     </div>
 </div>
 
-<div id="settingsModal" class="modal hidden">
+<div id="settingsModal" class="modal hidden" onclick="if(event.target === this) closeSettings()">
     <div class="modal-content">
         <div class="modal-header">
             <h3>Settings</h3>
