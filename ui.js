@@ -24,7 +24,6 @@ const UI = {
             let clickAction = '';
 
             if (show.tmdbId) {
-                // API MODE
                 clickAction = `onclick="app.openChecklist(${show.id})"`;
 
                 if (!show.seasonData || !Array.isArray(show.seasonData)) {
@@ -50,7 +49,6 @@ const UI = {
                     `;
                 }
             } else {
-                // MANUAL MODE
                 clickAction = ''; 
                 badges = `<div class="status-badge manual">Manual</div>`;
                 bottomSection = `
@@ -78,7 +76,7 @@ const UI = {
         });
     },
 
-    renderChecklist(show) {
+    renderChecklist(show, seasonDetails) {
         const body = document.getElementById('modalBody');
         const title = document.getElementById('modalTitle');
         title.innerText = `${show.title} - S${show.season}`;
@@ -87,17 +85,28 @@ const UI = {
         const sData = safeSeasonData.find(s => s.number === show.season);
         const totalEps = sData ? sData.episodes : 24; 
 
-        let gridHtml = `<div class="checklist-grid">`;
+        let listHtml = `<div class="checklist-list">`;
         for (let i = 1; i <= totalEps; i++) {
             const isWatched = i <= show.episode;
-            const isNext = i === show.episode + 1;
-            let classList = "ep-box";
-            if (isWatched) classList += " watched";
-            if (isNext) classList += " next";
+            let epName = `Episode ${i}`;
+            
+            if (seasonDetails && seasonDetails.episodes && seasonDetails.episodes[i - 1]) {
+                epName = seasonDetails.episodes[i - 1].name;
+            }
 
-            gridHtml += `<div class="${classList}" onclick="app.setEpisode(${show.id}, ${i})">${i}</div>`;
+            let classList = "ep-list-item";
+            if (isWatched) classList += " watched";
+
+            listHtml += `
+            <div class="${classList}" onclick="app.setEpisode(${show.id}, ${i})">
+                <input type="checkbox" ${isWatched ? 'checked' : ''} onclick="event.stopPropagation(); app.setEpisode(${show.id}, ${i})">
+                <div class="ep-info">
+                    <span class="ep-num">${i}.</span>
+                    <span class="ep-name">${epName}</span>
+                </div>
+            </div>`;
         }
-        gridHtml += `</div>`;
+        listHtml += `</div>`;
 
         let nextSeasonHtml = '';
         if (show.episode >= totalEps) {
@@ -114,7 +123,7 @@ const UI = {
         }
 
         body.innerHTML = `
-            ${gridHtml}
+            ${listHtml}
             ${nextSeasonHtml}
             <div class="modal-actions" style="margin-top:20px">
                 <button class="secondary" onclick="app.closeModal()">Close</button>
@@ -123,13 +132,11 @@ const UI = {
         `;
     },
 
-    // Handles Add (Manual/API) and Edit (Manual/API)
     async renderModalContent(showObj = null) {
         const body = document.getElementById('modalBody');
         const titleHeader = document.getElementById('modalTitle');
         const hasKey = API.hasKey();
 
-        // SCENARIO 1: NEW SHOW (API ENABLED)
         if (hasKey && !showObj) {
             titleHeader.innerText = "Search Show";
             body.innerHTML = `
@@ -146,18 +153,23 @@ const UI = {
                 <div id="apiSelections" class="hidden">
                     <div class="form-group"><label>Where are you?</label><select id="seasonSelect" onchange="UI.updateEpisodeMax()"></select></div>
                     <div class="form-group"><label>Episode</label><input type="number" id="episode" value="1" min="1"></div>
-                    <div class="modal-actions"><button onclick="app.saveShow()">Start Tracking</button></div>
+                    <div class="modal-actions">
+                        <button class="secondary" onclick="app.closeModal()">Cancel</button>
+                        <button onclick="app.saveShow()">Start Tracking</button>
+                    </div>
+                </div>
+                
+                <div id="apiCancelContainer" class="modal-actions">
+                     <button class="secondary" onclick="app.closeModal()">Cancel</button>
                 </div>
             `;
             document.getElementById('apiSearch').addEventListener('input', debounce((e) => UI.handleSearch(e.target.value), 500));
             return;
         }
 
-        // SCENARIO 2: EDITING or ADDING MANUAL
         titleHeader.innerText = showObj ? "Edit Show" : "Add Show (Manual)";
         
         let upgradeHtml = '';
-        // CONVERSION LOGIC: If Editing a Manual show AND API is active
         if (showObj && !showObj.tmdbId && hasKey) {
             upgradeHtml = `
                 <div class="upgrade-box">
@@ -221,6 +233,7 @@ const UI = {
         });
         container.classList.remove('hidden');
         document.getElementById('searchResults').classList.add('hidden');
+        document.getElementById('apiCancelContainer').classList.add('hidden');
     },
 
     updateEpisodeMax() {
@@ -236,7 +249,6 @@ const UI = {
         setValue('title', data.title);
         setValue('season', data.season);
         setValue('episode', data.episode);
-        // If API show, we might fill hidden fields, but usually unneeded for basic edits
     }
 };
 
